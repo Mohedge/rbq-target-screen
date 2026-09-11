@@ -184,16 +184,33 @@ with st.sidebar:
             st.markdown(f"**{annexe}**")
             st.markdown("  \n".join(f"`{code}` {title}" for code, title in items))
     muni_text = st.text_area("MUNICIPALITIES (one per line)", "\n".join(defaults.MUNICIPALITIES),
-                             height=260, help="Accent- and case-insensitive match on the RBQ 'Municipalite' column.")
-    CURRENT_YEAR = st.number_input("CURRENT_YEAR", 2000, 2100, defaults.CURRENT_YEAR)
-    AGE_THRESHOLD = st.number_input("AGE_THRESHOLD", 0, 100, defaults.AGE_THRESHOLD)
-    STRONG_AGE_THRESHOLD = st.number_input("STRONG_AGE_THRESHOLD", 0, 100, defaults.STRONG_AGE_THRESHOLD)
-    HIGH_BOND = st.number_input("HIGH_BOND (CAD)", 0, 1_000_000, defaults.HIGH_BOND, step=1000)
-    SUBCAT_THRESHOLD = st.number_input("SUBCAT_THRESHOLD", 0, 50, defaults.SUBCAT_THRESHOLD)
-    OUTPUT_ROWS = st.number_input("OUTPUT_ROWS", 1, 1000, defaults.OUTPUT_ROWS)
+                             height=260,
+                             help="The territory: only companies whose RBQ 'Municipalite' matches one of "
+                                  "these names are kept (accents and capitals are ignored), so this list "
+                                  "defines the corridor.")
+    CURRENT_YEAR = st.number_input("CURRENT_YEAR", 2000, 2100, defaults.CURRENT_YEAR,
+                                   help="The year used to compute each company's age "
+                                        "(CURRENT_YEAR minus the REQ registration year).")
+    AGE_THRESHOLD = st.number_input("AGE_THRESHOLD", 0, 100, defaults.AGE_THRESHOLD,
+                                    help="A company at least this many years old scores +2 points "
+                                         "(unless it also reaches STRONG_AGE_THRESHOLD, which replaces the +2 with +3).")
+    STRONG_AGE_THRESHOLD = st.number_input("STRONG_AGE_THRESHOLD", 0, 100, defaults.STRONG_AGE_THRESHOLD,
+                                           help="A company at least this many years old scores +3 points instead of +2, "
+                                                "the strongest signal of an owner nearing succession.")
+    HIGH_BOND = st.number_input("HIGH_BOND (CAD)", 0, 1_000_000, defaults.HIGH_BOND, step=1000,
+                                help="A company whose RBQ bond ('Montant de la caution') equals exactly this amount "
+                                     "scores +2 points; the RBQ requires 40 000 CAD from general contractors and "
+                                     "20 000 CAD from specialised ones, so 40 000 flags firms that also hold a general licence.")
+    SUBCAT_THRESHOLD = st.number_input("SUBCAT_THRESHOLD", 0, 50, defaults.SUBCAT_THRESHOLD,
+                                       help="A company authorised for at least this many RBQ sub-categories scores +1 point, "
+                                            "as a rough proxy for breadth of operations.")
+    OUTPUT_ROWS = st.number_input("OUTPUT_ROWS", 1, 1000, defaults.OUTPUT_ROWS,
+                                  help="How many top-scored companies go into the Targets sheet; the full corridor "
+                                       "is still exported on its own sheet.")
     USE_REQ_JOIN = st.checkbox("Join REQ register (registration year)", defaults.USE_REQ_JOIN,
-                               help="REQ open data is licensed CC-BY-NC-SA 4.0 (non-commercial). "
-                                    "Untick to run RBQ-only; Age and age-based score will be blank.")
+                               help="Ticked, the app looks up each company's registration year in the REQ register "
+                                    "to compute its age; unticked, it runs on RBQ data alone and the age-based "
+                                    "points are simply not awarded (REQ data is licensed CC-BY-NC-SA 4.0, non-commercial).")
 
 params = pl.Params(
     SUBCATEGORY=SUBCATEGORY.strip(),
