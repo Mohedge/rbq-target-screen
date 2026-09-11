@@ -133,8 +133,8 @@ SUBCATEGORIES = [
 
 STRINGS = {
   "en": {
-    "page_title": "Acquisition target screen (RBQ x REQ)",
-    "title": "Acquisition target screen: RBQ licences x REQ register",
+    "page_title": "RBQ Radar",
+    "title": "RBQ Radar: acquisition target screen (RBQ licences x REQ register)",
     "caption": "Deterministic filter, join, and score. Invents nothing. Every step reports its row count.",
     "switch": "Fr",
     "params": "Parameters",
@@ -219,7 +219,7 @@ STRINGS = {
     "short_due": "version {held}, new publication expected today (T-0)",
     # about
     "about": """
-### About this app (work in progress)
+### About RBQ Radar (work in progress)
 
 **Purpose.** A ground-level tool to build a first list of acquisition candidates in a construction
 trade, before any outreach. It filters the RBQ's public list of active licences by trade and territory,
@@ -255,8 +255,8 @@ Code: {github}
 """,
   },
   "fr": {
-    "page_title": "Filtre de cibles d'acquisition (RBQ x REQ)",
-    "title": "Filtre de cibles d'acquisition : licences RBQ x registre REQ",
+    "page_title": "RBQ Radar",
+    "title": "RBQ Radar : filtre de cibles d'acquisition (licences RBQ x registre REQ)",
     "caption": "Filtre, jointure et pointage deterministes. N'invente rien. Chaque etape rapporte son nombre de lignes.",
     "switch": "Eng",
     "params": "Parametres",
@@ -341,7 +341,7 @@ Code: {github}
     "short_stale": "version du {held}, version plus recente disponible depuis {days} jours (T+{days})",
     "short_due": "version du {held}, nouvelle publication attendue aujourd'hui (T-0)",
     "about": """
-### A propos de cette application (travail en cours)
+### A propos de RBQ Radar (travail en cours)
 
 **But.** Un outil de terrain pour dresser une premiere liste de candidats a l'acquisition dans un metier
 de la construction, avant toute approche. Il filtre la liste publique des licences actives de la RBQ par
@@ -519,12 +519,16 @@ def render(lang: str):
     other = "fr" if lang == "en" else "en"
     t = s.__getitem__
 
-    # Language switch, top right of the page body (the toolbar above it belongs to Streamlit).
-    left, right = st.columns([11, 1])
-    with right:
-        st.page_link(PAGES[other], label=t("switch"))
-    with left:
-        st.title(t("title"))
+    # Language switch, pinned in the header row, left of Streamlit's toolbar
+    # (Share, star, edit, GitHub, menu). The toolbar is not ours, so the link is
+    # positioned over the header rather than inserted into it.
+    st.markdown(
+        "<style>.lang-switch{position:fixed;top:0.95rem;right:15.5rem;z-index:1000001;"
+        "font-size:0.85rem;font-weight:600;text-decoration:none;color:inherit;opacity:0.85}"
+        ".lang-switch:hover{opacity:1;text-decoration:underline}</style>"
+        f'<a class="lang-switch" href="/{PAGES[other].url_path}" target="_self">{t("switch")}</a>',
+        unsafe_allow_html=True)
+    st.title(t("title"))
     st.caption(t("caption"))
 
     defaults = pl.Params()
