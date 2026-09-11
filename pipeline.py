@@ -125,37 +125,53 @@ def step3_territory(df: pd.DataFrame, p: Params, log) -> pd.DataFrame:
     return df
 
 
-def step4_join_req(df: pd.DataFrame, nom_source, log, chunksize=500_000) -> pd.DataFrame:
-    """Read Nom.csv in chunks, keeping only NEQs in df; earliest DAT_INIT_NOM_ASSUJ
-    per NEQ becomes the registration year. Memory stays flat regardless of file size."""
+def build_req_index(nom_source, wanted=None, chunksize=500_000) -> pd.DataFrame:
+    """Reduce Nom.csv to one row per NEQ with the earliest DAT_INIT_NOM_ASSUJ year
+    ("Registration year"). Reads in chunks so memory stays flat. If `wanted` is a
+    set of NEQs, only those are kept; otherwise the full index is built (about
+    two columns per registered enterprise, a few MB on disk)."""
     if isinstance(nom_source, (bytes, bytearray)):
         nom_source = io.BytesIO(nom_source)
-    wanted = set(df["NEQ"].str.strip())
-    wanted.discard("")
     parts = []
     reader = pd.read_csv(
         nom_source, dtype=str, keep_default_na=False, encoding="utf-8-sig",
-        usecols=["NEQ", "NOM_ASSUJ", "DAT_INIT_NOM_ASSUJ"], chunksize=chunksize,
+        usecols=["NEQ", "DAT_INIT_NOM_ASSUJ"], chunksize=chunksize,
     )
     for chunk in reader:
-        parts.append(chunk[chunk["NEQ"].isin(wanted)])
-    nom = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(
-        columns=["NEQ", "NOM_ASSUJ", "DAT_INIT_NOM_ASSUJ"])
-    del parts
+        if wanted is not None:
+            chunk = chunk[chunk["NEQ"].isin(wanted)]
+        chunk = chunk.assign(dt=pd.to_datetime(chunk["DAT_INIT_NOM_ASSUJ"], errors="coerce"))
+        chunk = chunk.dropna(subset=["dt"])
+        if len(chunk):
+            parts.append(chunk.groupby("NEQ", as_index=False)["dt"].min())
+    if not parts:
+        return pd.DataFrame({"NEQ": pd.Series(dtype=str),
+                             "Registration year": pd.Series(dtype="Int64")})
+    idx = pd.concat(parts, ignore_index=True).groupby("NEQ", as_index=False)["dt"].min()
+    idx["Registration year"] = idx["dt"].dt.year.astype("Int64")
+    return idx.drop(columns="dt")
 
-    nom["dt"] = pd.to_datetime(nom["DAT_INIT_NOM_ASSUJ"], errors="coerce")
-    earliest = (nom.dropna(subset=["dt"])
-                   .sort_values("dt")
-                   .drop_duplicates(subset="NEQ", keep="first")
-                   [["NEQ", "dt"]])
-    earliest["Registration year"] = earliest["dt"].dt.year.astype("Int64")
-    earliest = earliest.drop(columns="dt")
 
-    df = df.merge(earliest, on="NEQ", how="left")
+def step4_join_index(df: pd.DataFrame, index: pd.DataFrame, log) -> pd.DataFrame:
+    """Join a prepared REQ index (NEQ, Registration year) onto the corridor."""
+    index = index[["NEQ", "Registration year"]].copy()
+    index["NEQ"] = index["NEQ"].astype(str).str.strip()
+    index["Registration year"] = pd.to_numeric(index["Registration year"], errors="coerce").astype("Int64")
+    index = index.drop_duplicates(subset="NEQ")
+    df = df.copy()
+    df["NEQ"] = df["NEQ"].str.strip()
+    df = df.merge(index, on="NEQ", how="left")
     matched = df["Registration year"].notna().sum()
     rate = 100.0 * matched / len(df) if len(df) else 0.0
     log(f"STEP 4 - REQ match rate: {matched}/{len(df)} = {rate:.1f}%", len(df))
     return df
+
+
+def step4_join_req(df: pd.DataFrame, nom_source, log, chunksize=500_000) -> pd.DataFrame:
+    """Read Nom.csv and join the registration year (kept for compatibility)."""
+    wanted = set(df["NEQ"].str.strip())
+    wanted.discard("")
+    return step4_join_index(df, build_req_index(nom_source, wanted, chunksize), log)
 
 
 def step5_calculate(df: pd.DataFrame, p: Params, log) -> pd.DataFrame:
@@ -245,8 +261,10 @@ def step8_write(shortlist: pd.DataFrame, corridor: pd.DataFrame, p: Params,
 # Orchestration
 # ---------------------------------------------------------------------------
 
-def run(rbq_source, nom_source, p: Params, out, log_fn=print):
-    """Run all steps. Returns (shortlist, corridor, counts). Raises EmptyResult."""
+def run(rbq_source, nom_source, p: Params, out, log_fn=print, req_index=None):
+    """Run all steps. Returns (shortlist, corridor, counts). Raises EmptyResult.
+    nom_source: Nom.csv (path, bytes or file object) or None.
+    req_index: a prepared (NEQ, Registration year) DataFrame; takes precedence."""
     counts = []
 
     def log(label, n):
@@ -257,7 +275,9 @@ def run(rbq_source, nom_source, p: Params, out, log_fn=print):
     df = step2_filter(df, p, log)
     corridor = step3_territory(df, p, log)
     del df
-    if p.USE_REQ_JOIN and nom_source is not None:
+    if p.USE_REQ_JOIN and req_index is not None:
+        corridor = step4_join_index(corridor, req_index, log)
+    elif p.USE_REQ_JOIN and nom_source is not None:
         corridor = step4_join_req(corridor, nom_source, log)
     else:
         log("STEP 4 - REQ join skipped", len(corridor))
