@@ -37,6 +37,77 @@ REQ_PAGE = "https://www.donneesquebec.ca/recherche/dataset/registre-des-entrepri
 REQ_CACHE_SECONDS = 14 * 24 * 3600   # register is updated twice a month
 RBQ_CACHE_SECONDS = 24 * 3600        # licence list is updated daily
 
+# RBQ licence sub-categories (Regie du batiment du Quebec, annexes I to III).
+# Source: rbq.gouv.qc.ca, "Liste des sous-categories", consulted 2026-09-11.
+SUBCATEGORIES = [
+    ("Annexe I - Entrepreneur general", [
+        ("1.1.1", "Batiments residentiels neufs vises a un plan de garantie, classe I"),
+        ("1.1.2", "Batiments residentiels neufs vises a un plan de garantie, classe II"),
+        ("1.2", "Petits batiments"),
+        ("1.3", "Batiments de tout genre"),
+        ("1.4", "Routes et canalisation"),
+        ("1.5", "Structures d'ouvrages de genie civil"),
+        ("1.6", "Ouvrages de genie civil immerges"),
+        ("1.7", "Telecommunication, transport, transformation et distribution d'energie electrique"),
+        ("1.8", "Installation d'equipements petroliers"),
+        ("1.9", "Mecanique du batiment"),
+        ("1.10", "Remontees mecaniques"),
+    ]),
+    ("Annexe II - Entrepreneur specialise", [
+        ("2.1", "Puits fores"),
+        ("2.2", "Ouvrages de captage d'eau non fores"),
+        ("2.3", "Systemes de pompage des eaux souterraines"),
+        ("2.4", "Systemes d'assainissement autonome"),
+        ("2.6", "Pieux et fondations speciales"),
+        ("2.8", "Sautage"),
+        ("3.1", "Structures de beton"),
+        ("4.1", "Structures de maconnerie"),
+        ("5.1", "Structures metalliques et elements prefabriques de beton"),
+        ("6.1", "Charpentes de bois"),
+        ("10.0", "Systemes de chauffage localise a combustible solide"),
+        ("11.1", "Tuyauterie industrielle ou institutionnelle sous pression"),
+        ("13.1", "Protection contre la foudre"),
+        ("13.2", "Systemes d'alarme incendie"),
+        ("13.3", "Systemes d'extinction d'incendie"),
+        ("13.4", "Systemes localises d'extinction incendie"),
+        ("14.1", "Ascenseurs et monte-charges"),
+        ("14.2", "Appareils elevateurs pour personnes a mobilite reduite"),
+        ("14.3", "Autres types d'appareils elevateurs"),
+        ("15.1", "Systemes de chauffage a air pulse"),
+        ("15.2", "Systemes de bruleurs au gaz naturel"),
+        ("15.3", "Systemes de bruleurs a l'huile"),
+        ("15.4", "Systemes de chauffage hydronique"),
+        ("15.5", "Plomberie"),
+        ("15.6", "Propane"),
+        ("15.7", "Ventilation residentielle"),
+        ("15.8", "Ventilation"),
+        ("15.9", "Petits systemes de refrigeration"),
+        ("15.10", "Refrigeration"),
+        ("16.0", "Electricite"),
+        ("17.1", "Instrumentation, controle et regulation"),
+    ]),
+    ("Annexe III - Entrepreneur specialise", [
+        ("2.5", "Excavation et terrassement"),
+        ("2.7", "Travaux d'emplacement"),
+        ("3.2", "Petits ouvrages de beton"),
+        ("4.2", "Maconnerie non structurale, marbre et ceramique"),
+        ("5.2", "Ouvrages metalliques"),
+        ("6.2", "Travaux de bois et plastique"),
+        ("7.0", "Isolation, etancheite, couvertures et revetements exterieurs"),
+        ("8.0", "Portes et fenetres"),
+        ("9.0", "Travaux de finition"),
+        ("11.2", "Equipements et produits speciaux"),
+        ("12.0", "Armoires et comptoirs usines"),
+        ("13.5", "Installations speciales ou prefabriquees"),
+        ("17.2", "Intercommunication, telephonie et surveillance"),
+    ]),
+]
+
+SUBCATEGORY_HELP = "\n\n".join(
+    f"**{annexe}**  \n" + "  \n".join(f"{code} : {title}" for code, title in items)
+    for annexe, items in SUBCATEGORIES
+)
+
 CACHE_DIR = os.path.join(tempfile.gettempdir(), "rbq_req_cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -106,7 +177,12 @@ defaults = pl.Params()
 with st.sidebar:
     st.header("Parameters")
     SUBCATEGORY = st.text_input("SUBCATEGORY (RBQ sous-categorie)", defaults.SUBCATEGORY,
-                                help="16 = electrical. Change for another trade.")
+                                help="Type the code exactly as it appears in the RBQ file "
+                                     "(16 = electricite, 15.5 = plomberie).\n\n" + SUBCATEGORY_HELP)
+    with st.expander("Sous-categories RBQ (reference)"):
+        for annexe, items in SUBCATEGORIES:
+            st.markdown(f"**{annexe}**")
+            st.markdown("  \n".join(f"`{code}` {title}" for code, title in items))
     muni_text = st.text_area("MUNICIPALITIES (one per line)", "\n".join(defaults.MUNICIPALITIES),
                              height=260, help="Accent- and case-insensitive match on the RBQ 'Municipalite' column.")
     CURRENT_YEAR = st.number_input("CURRENT_YEAR", 2000, 2100, defaults.CURRENT_YEAR)
