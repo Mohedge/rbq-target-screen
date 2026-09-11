@@ -219,8 +219,11 @@ with col2:
     st.subheader("File 2: REQ register (Nom.csv)")
     st.markdown(f"Source: [Donnees Quebec]({REQ_PAGE}), licence CC-BY-NC-SA 4.0, updated twice monthly. "
                 "Only Nom.csv is used; the other five files in the zip are ignored.")
-    req_mode = st.radio("REQ source", ["Try automatic fetch", "Upload file (Nom.csv or the REQ .zip)"],
-                        horizontal=True, label_visibility="collapsed", disabled=not USE_REQ_JOIN)
+    req_mode = st.radio("REQ source", ["Upload file (Nom.csv or the REQ .zip)", "Try automatic fetch"],
+                        horizontal=True, label_visibility="collapsed", disabled=not USE_REQ_JOIN,
+                        help="Automatic fetch is second on purpose: the Registraire refuses requests "
+                             "from servers (403) and is often unavailable (503). Download the zip from "
+                             "Donnees Quebec in your browser, then upload Nom.csv here.")
     req_upload = None
     if req_mode.startswith("Upload") and USE_REQ_JOIN:
         req_upload = st.file_uploader("Nom.csv or the full REQ zip", type=["csv", "zip"])
