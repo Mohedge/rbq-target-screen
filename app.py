@@ -523,9 +523,10 @@ def render(lang: str):
     # (Share, star, edit, GitHub, menu). The toolbar is not ours, so the link is
     # positioned over the header rather than inserted into it.
     st.markdown(
-        "<style>.lang-switch{position:fixed;top:0.95rem;right:15.5rem;z-index:1000001;"
-        "font-size:0.85rem;font-weight:600;text-decoration:none;color:inherit;opacity:0.85}"
-        ".lang-switch:hover{opacity:1;text-decoration:underline}</style>"
+        "<style>a.lang-switch, a.lang-switch:visited{position:fixed;top:1.15rem;right:15.5rem;"
+        "z-index:1000001;font-size:0.9rem;font-weight:400;line-height:1;text-decoration:none !important;"
+        "color:rgb(49,51,63) !important;opacity:0.8}"
+        "a.lang-switch:hover{opacity:1;text-decoration:underline !important}</style>"
         f'<a class="lang-switch" href="/{PAGES[other].url_path}" target="_self">{t("switch")}</a>',
         unsafe_allow_html=True)
     st.title(t("title"))
